@@ -4,21 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Product;
-//use App\Services\CurrencyConversionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Transbank\Webpay\WebpayPlus\Exceptions\TransactionCommitException;
+use Illuminate\Support\Facades\Http;
 use Transbank\Webpay\WebpayPlus\Transaction;
+use Transbank\Webpay\WebpayPlus\Exceptions\TransactionCommitException;
 
 class ClientOrderController extends Controller
 {
-    //protected $currencyService;
-
-    //public function __construct(CurrencyConversionService $currencyService)
-    //{
-    //     $this->currencyService = $currencyService;
-    //}
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -50,8 +43,45 @@ class ClientOrderController extends Controller
 
                 $order->products()->attach($product->id, ['quantity' => $item['quantity']]);
 
+                if (strtolower($product->moneda) === 'clp') {
+                    $tipoCambio = 1.0;
+                } else {
+                    $from = strtolower($product->moneda);
+                    $to = 'clp';
 
-                $totalAmount += $product->precio * $item['quantity'];
+                    $url1 = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{$from}.json";
+                    $url2 = "https://latest.currency-api.pages.dev/v1/currencies/{$from}.json";
+
+                    $response = Http::get($url1);
+
+                    if (!$response->ok()) {
+                        // fallback
+                        $response = Http::get($url2);
+                    }
+
+                    if ($response->ok()) {
+                        $json = $response->json();
+
+                        $fromKey = strtolower($from);
+
+                        if (isset($json[$fromKey]) && isset($json[$fromKey][$to])) {
+                            $tipoCambio = $json[$fromKey][$to];
+                        } else {
+                            Log::error("No se encontró la moneda destino '{$to}' dentro de la moneda origen '{$fromKey}' en la respuesta");
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'No se pudo obtener el tipo de cambio desde la API pública de fawazahmed0',
+                                'moneda_origen' => $fromKey,
+                                'respuesta_api' => $json,
+                            ], 500);
+                        }
+                    }
+                }
+
+                $precioClp = $product->precio * $tipoCambio;
+                $totalAmount += $precioClp * $item['quantity'];
+                $totalAmount = round($totalAmount);  // Redondear a entero
+
             }
 
             $buyOrder = (string) $order->id;
@@ -63,13 +93,10 @@ class ClientOrderController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'order' => $order->load('products'),
-                'webpay' => [
-                    'url' => $response->getUrl(),
-                    'token' => $response->getToken(),
-                ],
-            ], 201);
+            return view('client-orders.webpay', [
+                'url' => $response->getUrl(),
+                'token' => $response->getToken(),
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -79,7 +106,6 @@ class ClientOrderController extends Controller
             ], 500);
         }
     }
-
 
     public function webpayResponse(Request $request, $id)
     {

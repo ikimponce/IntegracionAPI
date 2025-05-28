@@ -61,7 +61,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'nombre'  => 'sometimes|string|max:255',
             'marca'   => 'sometimes|string|max:255',
-            'codigo'  => 'sometimes|string|max:100|unique:productos,codigo,' . $product->id,
+            'codigo'  => 'sometimes|string|max:100|unique:products,codigo,' . $product->id,
             'stock'   => 'sometimes|integer|min:0',
             'moneda' => 'required|string|in:CLP,USD,EUR',
             'precio'  => 'sometimes|numeric|min:0',
