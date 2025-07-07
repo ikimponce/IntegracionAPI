@@ -6,3 +6,5 @@ Pasos Para la Ejecucion:
 4-Iniciar el servidor con el comando 'php artisan serve'
 
 Consultar los endpoints en POSTMAN, se pueden importar desde el archivo proporcionado.
+
+Para probar las pruebas unitarias utilizar el comando 'php artisan test'
