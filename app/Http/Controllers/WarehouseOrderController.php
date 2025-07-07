@@ -24,6 +24,7 @@ class WarehouseOrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::find($item['product_id']);
                 if ($product->stock < $item['quantity']) {
+                    DB::rollBack();
                     return response()->json([
                         'message' => "No hay suficiente stock para el producto {$product->nombre}"
                     ], 400);
@@ -38,9 +39,7 @@ class WarehouseOrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::find($item['product_id']);
 
-
                 $order->products()->attach($product->id, ['quantity' => $item['quantity']]);
-
 
                 $product->stock -= $item['quantity'];
                 $product->save();
@@ -65,11 +64,16 @@ class WarehouseOrderController extends Controller
 
     public function cancel($id)
     {
-        $order = Order::with('products')->findOrFail($id);
+        $order = Order::with('products')->find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Pedido no encontrado.'], 404);
+        }
 
         if ($order->type !== 'warehouse') {
             return response()->json(['message' => 'Este no es un pedido de bodega.'], 400);
         }
+
         if ($order->status === 'cancelled') {
             return response()->json(['message' => 'El pedido ya fue cancelado.'], 400);
         }

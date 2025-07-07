@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -24,7 +25,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'marca' => 'required|string|max:255',
-            'codigo' => 'required|string|max:100|unique:products,codigo',
+            'codigo' => ['required', 'string', 'max:100', Rule::unique('products', 'codigo')],
             'stock' => 'required|integer|min:0',
             'moneda' => 'required|string|in:CLP,USD,EUR',
             'precio' => 'required|numeric|min:0',

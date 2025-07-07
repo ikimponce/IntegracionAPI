@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nombre');
             $table->string('marca');
-            $table->string('codigo');
+            $table->string('codigo')->unique();
             $table->integer('stock')->default(0);
             $table->string('moneda')->default('CLP');
             $table->decimal('precio',10,2)->default(0);
